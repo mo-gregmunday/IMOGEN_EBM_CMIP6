@@ -584,10 +584,10 @@ def ebm_params(model):
         forcing_ssp126_file = cfg["forcing_ssp126"]
         
     forcing_ssp126, forcing_ssp585 = handle_forcings(forcing_ssp126_file, forcing_ssp585_file)
+    yrs = (1850 + np.arange(forcing_ssp585.shape[0])).astype("float")
 
-    toa_list = iris.load([])
     toa_126_list = iris.load([])
-    toa_4x_list = iris.load([])
+    toa_585_list = iris.load([])
 
     for dataset in input_data:
         if dataset["dataset"] == model:
@@ -601,24 +601,17 @@ def ebm_params(model):
                     sftlf_cube = cube_initial
             if dataset["exp"] == "historical-ssp585":
                 if cube_initial.var_name == "tas":
-                    tas_cube = cube_initial
+                    tas_585_cube = cube_initial
                 if not cube_initial.var_name == "tas":
-                    toa_list.append(cube_initial)
+                    toa_585_list.append(cube_initial)
             if dataset["exp"] == "historical-ssp126":
                 if cube_initial.var_name == "tas":
                     tas_126_cube = cube_initial
                 if not cube_initial.var_name == "tas":
                     toa_126_list.append(cube_initial)
-            if dataset["exp"] == "abrupt-4xCO2":
-                if cube_initial.var_name == "tas":
-                    tas_4x_cube = cube_initial
-                if not cube_initial.var_name == "tas":
-                    toa_4x_list.append(cube_initial)
 
     # calculating global, land and ocean TOA fluxes
-    rtmt_cube = net_flux_calculation(toa_list)
-    rtmt_126_cube = net_flux_calculation(toa_126_list)
-    rtmt_4x_cube = net_flux_calculation(toa_4x_list)
+    rtmt_585_cube = net_flux_calculation(toa_585_list)
 
     # calculating ocean fraction
     ocean_frac_cube, land_frac_cube, of = ocean_fraction_calc(sftlf_cube)
@@ -632,7 +625,7 @@ def ebm_params(model):
         tas_delta_land,
         tas_delta_ocean,
         tas_126_delta,
-    ) = anomalies_calc(rtmt_cube, tas_cube, tas_126_cube, ocean_frac_cube,
+    ) = anomalies_calc(rtmt_585_cube, tas_585_cube, tas_126_cube, ocean_frac_cube,
                        land_frac_cube)
 
     # calculating EBM parameter, Kappa
@@ -648,11 +641,6 @@ def ebm_params(model):
     else:
         kappa = kappa_parameter(of, toa_delta, tas_delta_ocean)
 
-    (reg, avg_list, yrs, forcing_585, forcing_126,
-     lambda_c) = create_regression_plot(tas_cube, rtmt_cube, tas_4x_cube,
-                                        rtmt_4x_cube, tas_126_cube,
-                                        rtmt_126_cube)
-
     if params is True:
         param_list = []
         for line in open(params_file, "r"):
@@ -666,33 +654,25 @@ def ebm_params(model):
                 nu_ratio = sub_list[0]["mu"]
     else:
         lambda_o, lambda_l, nu_ratio = atmos_params_calc(
-            forcing_585,
+            forcing_ssp585,
             toa_delta_land,
             toa_delta_ocean,
             tas_delta_land,
             tas_delta_ocean)
 
-    temp_global = ebm_check(forcing_585, of, kappa, lambda_o, lambda_l,
+    temp_global_585 = ebm_check(forcing_ssp585, of, kappa, lambda_o, lambda_l,
                             nu_ratio)
 
-    temp_global_126 = ebm_check(forcing_126, of, kappa, lambda_o, lambda_l,
+    temp_global_126 = ebm_check(forcing_ssp126, of, kappa, lambda_o, lambda_l,
                                 nu_ratio)
 
     model_work_dir, model_plot_dir = sf.make_model_dirs(
         cube_initial, work_path, plot_path)
 
-    # saving forcing cube
-    return_forcing_cube(forcing_585, forcing_126, yrs, model_work_dir)
-
     # plotting
     ebm_plots(
-        reg,
-        avg_list,
         yrs,
-        forcing_585,
-        forcing_126,
-        lambda_c,
-        temp_global,
+        temp_global_585,
         tas_delta,
         temp_global_126,
         tas_126_delta,

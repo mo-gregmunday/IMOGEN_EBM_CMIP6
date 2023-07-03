@@ -596,18 +596,22 @@ def ebm_params(model):
             # preparing single cube
             cube_initial = sf.compute_diagnostic(input_file)
 
-            if dataset["exp"] in ["piControl", "hist-1950"]:
+            if dataset["exp"] not in ["historical-ssp126", "historical-ssp585"]:
                 if cube_initial.var_name == "sftlf":
                     sftlf_cube = cube_initial
             if dataset["exp"] == "historical-ssp585":
                 if cube_initial.var_name == "tas":
                     tas_585_cube = cube_initial
-                if not cube_initial.var_name == "tas":
+                if cube_initial.var_name == "sftlf":
+                    sftlf_cube = cube_initial
+                if not cube_initial.var_name in ["tas", "sftlf"]:
                     toa_585_list.append(cube_initial)
             if dataset["exp"] == "historical-ssp126":
                 if cube_initial.var_name == "tas":
                     tas_126_cube = cube_initial
-                if not cube_initial.var_name == "tas":
+                if cube_initial.var_name == "sftlf":
+                    sftlf_cube = cube_initial
+                if not cube_initial.var_name in ["tas", "sftlf"]:
                     toa_126_list.append(cube_initial)
 
     # calculating global, land and ocean TOA fluxes
@@ -679,10 +683,15 @@ def ebm_params(model):
         model_plot_dir,
     )
 
-    provenance_record = get_provenance_record()
-    path = model_work_dir + "effective_forcing.nc"
-    with ProvenanceLogger(cfg) as provenance_logger:
-        provenance_logger.log(path, provenance_record)
+    # provenance_record = get_provenance_record()
+    # path = model_work_dir + "effective_forcing.nc"
+    # with ProvenanceLogger(cfg) as provenance_logger:
+    #     provenance_logger.log(path, provenance_record)
+    
+    params_dict = save_params(model, of, kappa, lambda_o, lambda_l, nu_ratio)
+    file = open(model_work_dir + "params.json", "a")
+    file.write(json.dumps(params_dict))
+    file.close()
 
     return save_params(model, of, kappa, lambda_o, lambda_l, nu_ratio)
 
@@ -718,10 +727,10 @@ def main(cfg):
     else:
         for model in models:
             model_data.append(ebm_params(model))
-
-    file = open(work_path + "params.json", "a")
-    file.write(json.dumps(model_data))
-    file.close()
+            
+        file = open(work_path + "params.json", "a")
+        file.write(json.dumps(model_data))
+        file.close()
 
 
 if __name__ == "__main__":

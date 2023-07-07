@@ -723,8 +723,9 @@ def main(cfg):
             models.append(model)
 
     if parallelise is True:
-        model_data = sf.parallelise(ebm_params, threads)(models)
+        sf.parallelise(ebm_params, threads)(models)
     else:
+        model_data = []
         for model in models:
             model_data.append(ebm_params(model))
             
